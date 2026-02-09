@@ -5,9 +5,9 @@ project(Core LANGUAGES CXX)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
@@ -16,8 +16,12 @@ add_library(Core SHARED
   core.cpp
   core.h
   geometria.h
+  geometria.cpp
 )
+target_include_directories(Core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(Core PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 
 target_compile_definitions(Core PRIVATE CORE_LIBRARY)
+
+target_link_libraries(Core PRIVATE IO)

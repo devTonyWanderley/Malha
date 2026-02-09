@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <immintrin.h>
 #include <algorithm>
+#include <variant>
+#include <array>
+#include <vector>
 
 namespace Core
 {
@@ -15,8 +18,6 @@ inline std::string limpa(std::string s)
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {return !std::isspace(ch);}));
     return s;
 }   //  --limpa--
-
-
 
 inline uint64_t BMI2(uint32_t x, uint32_t y)
 {
@@ -108,66 +109,78 @@ private:
 
 struct Ponto
 {
-static int32_t x0, y0;
+inline static int32_t x0 = 0, y0 = 0;
 
-Ponto(uint32_t xg, uint32_t yg, uint32_t zg): _xl(xg - x0), _yl(yg - x0), _z(zg)
-{}   //  --construtor de ponto genérico--
+Ponto(uint32_t xg, uint32_t yg, uint32_t zg): _xl(xg - x0), _yl(yg - y0), _z(zg)
+{
+    _dna = BMI2(_xl, _yl);
+}   //  --construtor de ponto genérico--
 
-Ponto(std::string i, std::string a, uint32_t xg, uint32_t yg, uint32_t zg): _xl(xg - x0), _yl(yg - x0), _z(zg), _dados(Core::Campo(i, a))
-{}   //  --construtor de ponto levantado--
+Ponto(std::string i, std::string a, uint32_t xg, uint32_t yg, uint32_t zg): _xl(xg - x0), _yl(yg - y0), _z(zg), _dados(Core::Campo(i, a))
+{
+    _dna = BMI2(_xl, _yl);
+}   //  --construtor de ponto levantado--
 
 Ponto(std::string a, int32_t d, int32_t o, uint32_t xg, uint32_t yg, uint32_t zg):
     _xl(xg - x0), _yl(yg - x0), _z(zg), _dados(Core::Prj(a, d, o))
-{}   //  --construtor de ponto projetado--
+{
+    _dna = BMI2(_xl, _yl);
+}   //  --construtor de ponto projetado--
 
-uint32_t xl()
+uint64_t dna() const
+{
+    return _dna;
+}
+
+uint32_t xl() const
 {
     return _xl;
 }   //  --acesso _xl uint32_t--
 
-uint32_t yl()
+uint32_t yl() const
 {
     return _yl;
 }   //  --acesso _yl uint32_t--
 
-uint32_t z()
+uint32_t z() const
 {
     return _z;
 }   //  --acesso _z uint32_t--
 
-double xl_d()
+double xl_d() const
 {
     return (_xl / 10000.0);
 }   //  --acesso _xl em metros--
 
-double yl_d()
+double yl_d() const
 {
     return (_yl / 10000.0);
 }   //  --acesso _yl em metros--
 
-double x_d()
+double x_d() const
 {
     return ((_xl + x0) / 10000.0);
 }   //  --acesso _x em metros--
 
-double y_d()
+double y_d() const
 {
     return ((_yl + y0) / 10000.0);
 }   //  --acesso _y em metros--
 
-double z_d()
+double z_d() const
 {
     return (_z / 10000.0);
 }   //  --acesso _z em metros--
 
-auto dados()
+auto dados() const
 {
     return _dados;
-}
+}   //  --acesso a metadados--
 
 private:
     uint32_t _xl, _yl, _z;
     std::variant<std::monostate, Campo, Prj> _dados;
+    uint64_t _dna;
 };  //  --Ponto--
 
 struct Face
@@ -190,5 +203,14 @@ size_t o(size_t i)
 private:
     std::array<size_t, 3> _v;  //  vértice
     std::array<size_t, 3> _o;  //  face oposta
+};
+class Superficie
+{
+//private:
+    std::vector<Ponto> pontos;
+    std::vector<Ponto> contorno;
+    std::vector<Face> faces;
+public:
+    std::vector<Ponto> importaPontos(const std::string &path);
 };
 }   //  --Core--

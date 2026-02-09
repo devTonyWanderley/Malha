@@ -6,7 +6,6 @@
 #include <string_view>
 #include <fstream>
 #include <filesystem>
-#include "../Core/geometria.h"
 
 namespace IO
 {
@@ -49,7 +48,7 @@ inline std::vector<std::string> lerLinhaFix(const std::string &ln, const cfgColu
 //  pode usar template typename
 inline std::vector<std::vector<std::string>> importaFix(const std::string &nomeArquivo, const cfgColunas &cfg)
 {
-    std::ifstream arquivo{std::filesystem::u8path(nomeArquivo)};
+    std::ifstream arquivo{std::filesystem::path(nomeArquivo)};
     if(!arquivo.is_open()) return {};
     std::string ln;
     std::vector<std::vector<std::string>> r;

@@ -3,6 +3,7 @@ project(Malha LANGUAGES CXX)
 # Adicione ou verifique estas linhas no seu CMakeLists.txt
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets LinguistTools)
