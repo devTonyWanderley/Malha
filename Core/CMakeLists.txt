@@ -1,27 +1,14 @@
-cmake_minimum_required(VERSION 3.16)
-
 project(Core LANGUAGES CXX)
 
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
-
-add_library(Core SHARED
-  Core_global.h
-  core.cpp
-  core.h
-  geometria.h
-  geometria.cpp
+# Criar a biblioteca Core
+# SHARED cria um .dll/.so, STATIC cria um .lib/.a
+add_library(Core SHARED 
+    geometria.h 
+    geometria.cpp
 )
+
+# Permitir que outros projetos encontrem os headers desta pasta
 target_include_directories(Core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(Core PRIVATE Qt${QT_VERSION_MAJOR}::Core)
-
-target_compile_definitions(Core PRIVATE CORE_LIBRARY)
-
-target_link_libraries(Core PRIVATE IO)
+# Linkar dependências do subprojeto (ex: Qt ou IO)
+target_link_libraries(Core PRIVATE Qt6::Core IO)
