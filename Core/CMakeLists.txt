@@ -5,6 +5,7 @@ project(Core LANGUAGES CXX)
 add_library(Core SHARED 
     geometria.h 
     geometria.cpp
+    massadados.h
 )
 
 # Permitir que outros projetos encontrem os headers desta pasta
