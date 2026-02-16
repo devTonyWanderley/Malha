@@ -7,11 +7,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi2")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Encontrar o Qt
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
 
 # Adicionar os Subdiretórios (Onde o CMake buscará outros CMakeLists.txt)
 add_subdirectory(Core)
 add_subdirectory(IO)
+add_subdirectory(View)
 
 # Criar o Executável Principal
 add_executable(Malha main.cpp)

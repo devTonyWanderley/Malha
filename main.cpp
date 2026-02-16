@@ -1,49 +1,59 @@
-#include <iostream>
-#include <iomanip>
+#include <QApplication>
+#include <QTimer>
+#include <QDebug>
+#include <vector>
+
+// Seus headers de lógica (ajuste os caminhos se necessário)
 #include "massadados.h"
+#include "View/wcad.h"
 
-int main() {
-    // Caminho da instância conforme solicitado
-    const std::string caminhoArquivo = "C:\\2026\\Soft\\Instâncias\\Pontos.pdw";
+int main(int argc, char *argv[]) {
+    QApplication a(argc, argv);
 
-    std::cout << "--- Iniciando Processamento de Massa de Dados ---" << std::endl;
-    std::cout << "Arquivo: " << caminhoArquivo << "\n" << std::endl;
+    // 1. Instancia o Painel
+    WView::painelCad painel;
+    painel.setWindowTitle("Validação de Malha - Curva de Morton");
+    painel.resize(1024, 768);
+    painel.show();
 
-    // 1. Ingestão e Harmonização (Leitura de Amostras)
-    std::vector<Geo::Amostra> amostrasBrutas = Massa::importar(caminhoArquivo);
+    // 2. Importação e Processamento (Sua lógica de alta performance)
+    std::string caminho = "C:\\2026\\Soft\\Instâncias\\Pontos.pdw";
 
-    if (amostrasBrutas.empty()) {
-        std::cerr << "Erro: Arquivo vazio ou nao encontrado!" << std::endl;
-        return 1;
+    qDebug() << "Lendo arquivo:" << caminho.c_str();
+    auto amostras = Massa::importar(caminho);
+
+    if (amostras.empty()) {
+        qCritical() << "Erro: Arquivo vazio ou não encontrado!";
+        return -1;
     }
 
-    std::cout << "Pontos lidos: " << amostrasBrutas.size() << std::endl;
+    qDebug() << "Processando" << amostras.size() << "pontos...";
+    auto pontos = Massa::GerenciadorMassa::processar(amostras);
 
-    // 2. Inteligência Espacial (Geração dos Pontos com DNA Morton)
-    // O GerenciadorMassa executa o AnalisadorEspacial internamente
-    std::vector<Geo::Ponto> pontosProcessados = Massa::GerenciadorMassa::processar(amostrasBrutas);
+    // 3. Desenho Animado (Para verificar o comportamento/sentido)
+    // Usamos um timer para não travar a interface e ver a ordem Morton
+    int indice = 0;
+    QTimer* timer = new QTimer(&painel);
 
-    // 3. Exibição dos Resultados
-    std::cout << std::left << std::setw(18) << "Nome"
-              << std::setw(12) << "X_Rel"
-              << std::setw(12) << "Y_Rel"
-              << std::setw(10) << "Z"
-              << "DNA (Morton 2D Hex)" << std::endl;
-    std::cout << std::string(75, '-') << std::endl;
+    QObject::connect(timer, &QTimer::timeout, [&]() {
+        if (indice < pontos.size()) {
+            // Desenha em blocos de 50 para ser mais rápido, mas ainda perceptível
+            for(int i = 0; i < 50 && indice < pontos.size(); ++i) {
+                const auto& p = pontos[indice];
 
-    for (const auto& p : pontosProcessados) {
-        // Recuperamos a amostra original para exibir o nome
-        const auto& original = amostrasBrutas[p.id_ref];
+                // Adiciona o ponto na cena (xl, yl são coordenadas locais tratadas)
+                painel.scene()->addEllipse(p.xl, p.yl, 0.2, 0.2,
+                                           QPen(Qt::Cyan, 0), QBrush(Qt::Cyan));
+                indice++;
+            }
+        } else {
+            timer->stop();
+            qDebug() << "Desenho concluído. Aplicando Zoom Limites.";
+            painel.zoomLimites();
+        }
+    });
 
-        std::cout << std::left << std::setw(18) << original.nome()
-                  << std::setw(12) << p.xl
-                  << std::setw(12) << p.yl
-                  << std::setw(10) << p.z
-                  << "0x" << std::hex << std::uppercase << std::setw(16) << std::setfill('0')
-                  << p.dna << std::dec << std::setfill(' ') << std::endl;
-    }
+    timer->start(5); // Atualiza a cada 5ms
 
-    std::cout << "\n--- Processamento Concluido com Sucesso ---" << std::endl;
-
-    return 0;
+    return a.exec();
 }

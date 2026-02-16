@@ -5,9 +5,14 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <array>
 
 namespace Geo
 {
+
+// --- INFRAESTRUTURA ---
+constexpr double EPSILON = 1e-12;
+constexpr size_t VAZIO = 999999999;
 
 /**
  * @brief Ticket de Configuração Espacial (Imutável por massa de dados).
@@ -76,6 +81,34 @@ struct Amostra
 private:
     std::string _nome, _atributo;
     uint32_t _abc, _ord, _cot;
+};
+
+struct Face
+{
+    std::array<size_t, 3> v; // Vértices: v[0], v[1], v[2] (Sempre CCW)
+    std::array<size_t, 3> f; // Vizinhos: f[0] oposta a v[0], etc.
+
+    Face(size_t v0, size_t v1, size_t v2): v({v0, v1, v2}), f({VAZIO, VAZIO, VAZIO}){}
+
+    // Agora, "ser borda" é ter pelo menos um vizinho VAZIO
+    inline bool naBorda() const
+    {
+        return (f[0] == VAZIO || f[1] == VAZIO || f[2] == VAZIO);
+    }
+
+    // Acha qual índice (0, 1 ou 2) contém o vértice 'idV'
+    // Útil para o 'LegalizarArestas' encontrar a aresta oposta
+    inline int indexDe(size_t idV) const
+    {
+        if (v[0] == idV) return 0;
+        if (v[1] == idV) return 1;
+        if (v[2] == idV) return 2;
+        return -1; // Não pertence a esta face
+    }
+
+    // Retorna o vizinho oposto ao vértice que está no índice 'i'
+    inline size_t vizinhoOpostoA(int i) const { return f[i]; }
+
 };
 
 } // namespace Geo
