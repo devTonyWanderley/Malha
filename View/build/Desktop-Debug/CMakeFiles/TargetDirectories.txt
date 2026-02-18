@@ -1,5 +1,0 @@
-C:/2026/Malha/View/build/Desktop-Debug/CMakeFiles/View.dir
-C:/2026/Malha/View/build/Desktop-Debug/CMakeFiles/edit_cache.dir
-C:/2026/Malha/View/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
-C:/2026/Malha/View/build/Desktop-Debug/CMakeFiles/View_autogen_timestamp_deps.dir
-C:/2026/Malha/View/build/Desktop-Debug/CMakeFiles/View_autogen.dir

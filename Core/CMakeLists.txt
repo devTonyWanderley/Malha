@@ -6,6 +6,7 @@ add_library(Core SHARED
     geometria.h 
     geometria.cpp
     massadados.h
+    geohl.h
 )
 
 # Permitir que outros projetos encontrem os headers desta pasta

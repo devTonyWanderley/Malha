@@ -1,59 +1,69 @@
-#include <QApplication>
-#include <QTimer>
 #include <QDebug>
-#include <vector>
+#include "geohl.h"
 
-// Seus headers de lógica (ajuste os caminhos se necessário)
+int main()
+{
+    qDebug()
+        << "Hello World!!!"
+        << "\nLer e apresentar as WAmostras:";
+
+    //  instanciar WMassa:
+    whlio::WMassa massa;
+    massa.importa("C:\\2026\\Soft\\Instâncias\\Pontos.pdw");
+    qDebug()
+        << "\nTamanho de \"amostras\":\t"
+        << massa.amostras.size();
+    /*
+    for(const auto i : massa.amostras)
+    {
+        qDebug()
+            << i.nome << '\t'
+            << i.atri << '\t'
+            << i.abci << '\t'
+            << i.orde << '\t'
+            << i.cota << '\t';
+    }
+    */
+    qDebug()
+        << "min: [" << massa.xmin << " , " << massa.ymin << "]\nmax: [" << massa.xmax << " , " << massa.ymax << "]\n"
+        << "b: " << massa.xmax - massa.xmin << "\tdx: " << massa.sb << '\n'
+        << "h: " << massa.ymax - massa.ymin << "\tdy: " << massa.sh;
+    return 0;
+}
+
+/*
+#include <QApplication>
+#include <QDebug>
 #include "massadados.h"
 #include "View/wcad.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     QApplication a(argc, argv);
 
-    // 1. Instancia o Painel
+    // 1. Instancia e configura a janela
     WView::painelCad painel;
-    painel.setWindowTitle("Validação de Malha - Curva de Morton");
-    painel.resize(1024, 768);
+    painel.setWindowTitle("Visualizador de Malha");
+    painel.resize(1280, 720);
     painel.show();
 
-    // 2. Importação e Processamento (Sua lógica de alta performance)
+    // 2. Lógica de Dados
     std::string caminho = "C:\\2026\\Soft\\Instâncias\\Pontos.pdw";
-
     qDebug() << "Lendo arquivo:" << caminho.c_str();
+
     auto amostras = Massa::importar(caminho);
 
     if (amostras.empty()) {
-        qCritical() << "Erro: Arquivo vazio ou não encontrado!";
+        qCritical() << "Erro: Arquivo não carregado.";
         return -1;
     }
 
     qDebug() << "Processando" << amostras.size() << "pontos...";
     auto pontos = Massa::GerenciadorMassa::processar(amostras);
 
-    // 3. Desenho Animado (Para verificar o comportamento/sentido)
-    // Usamos um timer para não travar a interface e ver a ordem Morton
-    int indice = 0;
-    QTimer* timer = new QTimer(&painel);
-
-    QObject::connect(timer, &QTimer::timeout, [&]() {
-        if (indice < pontos.size()) {
-            // Desenha em blocos de 50 para ser mais rápido, mas ainda perceptível
-            for(int i = 0; i < 50 && indice < pontos.size(); ++i) {
-                const auto& p = pontos[indice];
-
-                // Adiciona o ponto na cena (xl, yl são coordenadas locais tratadas)
-                painel.scene()->addEllipse(p.xl, p.yl, 0.2, 0.2,
-                                           QPen(Qt::Cyan, 0), QBrush(Qt::Cyan));
-                indice++;
-            }
-        } else {
-            timer->stop();
-            qDebug() << "Desenho concluído. Aplicando Zoom Limites.";
-            painel.zoomLimites();
-        }
-    });
-
-    timer->start(5); // Atualiza a cada 5ms
+    // 3. Desenha tudo de uma vez (Sem animação)
+    painel.desenharPontos(pontos);
 
     return a.exec();
 }
+*/

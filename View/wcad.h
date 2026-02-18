@@ -17,6 +17,8 @@ public:
 
     // Limpa a cena (útil para recarregar dados)
     void limparCena();
+
+    void chamaZoomLimites(){zoomLimites();}
 protected:
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;

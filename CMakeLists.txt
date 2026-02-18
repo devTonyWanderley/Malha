@@ -18,4 +18,4 @@ add_subdirectory(View)
 add_executable(Malha main.cpp)
 
 # Linkar com as bibliotecas que você criou nos subprojetos
-target_link_libraries(Malha PRIVATE Core IO Qt6::Widgets)
+target_link_libraries(Malha PRIVATE Core IO View Qt6::Widgets)
