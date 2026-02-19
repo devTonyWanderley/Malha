@@ -1,5 +1,3 @@
-//  geometria highlander .. paralelo a geometria .. refazer com diferença no countainer
-//  independente, e para substituir geometria
 #pragma once
 #include <stdint.h>
 #include <string>
@@ -23,38 +21,57 @@ struct WAmostra
         atr.erase(std::remove_if(atr.begin(), atr.end(), ::isspace), atr.end());
         atri = std::move(atr);
     }
-};
+};  //  --struct WAmostra--
 
 struct alignas(32) WPonto
 {
     uint32_t xl, yl, z;
-    size_t aref; // Referência ao índice original em 'amostras'
-
-    // Construtor padrão (necessário para inicializar o vector 'quadro')
+    size_t aref; // Referência ao índice original em 'amostras', ou em outra estrutura (pavimento, projeto, camada, etc)
     WPonto() : xl(0), yl(0), z(0), aref(0) {}
-
-    // Construtor de conversão: Transforma Real -> Local
     WPonto(uint32_t x_real, uint32_t y_real, uint32_t z_real, size_t indice, uint32_t x0, uint32_t y0)
         : xl(x_real - x0), yl(y_real - y0), z(z_real), aref(indice)
-    {
-        // Aqui xl e yl já nascem centralizados no Quadro Zero
-    }
-
-    // Função utilitária para distância quadrada ao centro do quadrante
-    // Essencial para a "Ação de Despejo"
+    {}
     uint64_t distSq(uint32_t cx, uint32_t cy) const
     {
         int64_t dx = static_cast<int64_t>(xl) - cx;
         int64_t dy = static_cast<int64_t>(yl) - cy;
         return static_cast<uint64_t>(dx * dx + dy * dy);
     }
-};
+};  //  --struct alignas(32) WPonto--
 
 struct WNo
 {
     size_t sw, se, ne, nw;
     WPonto local;
-};
+};  //  --struct WNo--
+
+inline int64_t orient2d(const WPonto& a, const WPonto& b, const WPonto& c)
+{
+    return (((static_cast<int64_t>(b.xl)) - (static_cast<int64_t>(a.xl))) * ((static_cast<int64_t>(c.yl)) - (static_cast<int64_t>(a.yl)))) -
+           (((static_cast<int64_t>(b.yl)) - (static_cast<int64_t>(a.yl))) * ((static_cast<int64_t>(c.xl)) - (static_cast<int64_t>(a.xl))));
+}   //  --inline int64_t orient2d(const WPonto& a, const WPonto& b, const WPonto& c)--
+
+inline int64_t orient2d(const uint32_t xa, const uint32_t ya,
+                        const uint32_t xb, const uint32_t yb,
+                        const uint32_t xc, const uint32_t yc)
+{
+    return (((static_cast<int64_t>(xb)) - (static_cast<int64_t>(xa))) * ((static_cast<int64_t>(yc)) - (static_cast<int64_t>(ya)))) -
+           (((static_cast<int64_t>(yb)) - (static_cast<int64_t>(ya))) * ((static_cast<int64_t>(xc)) - (static_cast<int64_t>(xa))));
+}
+
+struct WFace
+{
+    size_t p[3];
+    size_t f[3];
+    WFace(size_t i0, size_t i1, size_t i2, const std::vector<WPonto>& pontos)
+    {
+        p[0] = i0;
+        p[1] = i1;
+        p[2] = i2;
+        if (orient2d(pontos[i0], pontos[i1], pontos[i2]) < 0) std::swap(p[1], p[2]);
+        f[0] = f[1] = f[2] = static_cast<size_t>(-1);
+    }
+};  //  --struct WFace--
 
 }   //  --namespace whlg--
 
@@ -63,14 +80,11 @@ namespace whlio
 class WMassa
 {
 public:
-    // Removido o 'static' para permitir múltiplas instâncias e segurança de thread
     uint32_t xmin, ymin, xmax, ymax;
     uint32_t x0, y0; // Coordenadas de origem no mundo real
     uint32_t sb, sh; // Meia-largura e meia-altura do quadro (potências de 2)
-
     std::vector<whlg::WAmostra> amostras;
     std::vector<whlg::WNo> quadro;
-
     void inserirWPonto(whlg::WPonto p_novo)
     {
         if(quadro.size() <= 1)
@@ -139,55 +153,36 @@ public:
                 }
             }
         }
-    }
+    }   //  --void inserirWPonto(whlg::WPonto p_novo)--
 
     void importa(const std::string& arquivo)
     {
-        // 1. Importação bruta (Mantendo seu layoutConfig)
         auto dados = IO::MIO::importarFixo(arquivo, {16, 16, 12, 12, 12});
         if (dados.empty()) return;
-
-        // 2. Reset de busca de extremos
         xmin = ymin = 0xFFFFFFFF;
         xmax = ymax = 0;
         amostras.clear();
         amostras.reserve(dados.size());
-
-        // 3. Primeiro Passo: Coleta e Extremos
         for (auto& linha : dados)
         {
             if (linha.size() < 5) continue;
-
-            // Use stoul para uint32_t (mais rápido que stol)
             uint32_t y = static_cast<uint32_t>(std::stoul(linha[2]));
             uint32_t x = static_cast<uint32_t>(std::stoul(linha[3]));
             uint32_t z = static_cast<uint32_t>(std::stoul(linha[4]));
-
             if (x < xmin) xmin = x; if (x > xmax) xmax = x;
             if (y < ymin) ymin = y; if (y > ymax) ymax = y;
-
-            // Movemos as strings para evitar cópias (Performance!)
             amostras.emplace_back(std::move(linha[0]), std::move(linha[1]), x, y, z);
         }
-
-        // 4. Segundo Passo: Definição do Geometria do Quadro Zero
         uint32_t ampX = xmax - xmin;
         uint32_t ampY = ymax - ymin;
-
-        // sb e sh como potências de 2 (metade do lado total)
-        // bit_ceil garante que o quadro caiba a amplitude
+        ampX += 500000;
+        ampY += 500000;
         sb = std::bit_ceil(ampX) >> 1;
         sh = std::bit_ceil(ampY) >> 1;
-
-        // Garantir paridade para evitar truncamento no offset
         if (ampX % 2 != 0) ampX++;
         if (ampY % 2 != 0) ampY++;
-
-        // x0 e y0 são os cantos "sudoeste" do quadro no mundo real
-        // Eles garantem que o centro {sb, sh} coincida com o centro da nuvem
         x0 = xmin - (sb - (ampX / 2));
         y0 = ymin - (sh - (ampY / 2));
-
         quadro.clear();
         quadro.reserve(amostras.size() + 1);
         size_t indice = 0;
@@ -197,8 +192,6 @@ public:
             inserirWPonto(p);
             indice++;
         }
-        //  lógica de inserção
-    }
-};
-}
-
+    }   //  --void importa(const std::string& arquivo)--
+};  //  --class WMassa--
+}   //  --namespace whlio--

@@ -3,7 +3,8 @@
 #include <QGraphicsScene>
 #include <QWheelEvent>
 #include <QKeyEvent>
-#include "../Core/massadados.h"
+//#include "../Core/massadados.h"
+#include "../Core/geohl.h"
 
 namespace WView {
 class painelCad : public QGraphicsView {
@@ -13,7 +14,7 @@ public:
     void carregarTeste(); // Apenas para validar a cruz e o ponto
 
     // Desenha os pontos processados pela Geo::Massa
-    void desenharPontos(const std::vector<Geo::Ponto>& pontos);
+    void desenharPontos(const std::vector<whlg::WPonto>& pontos);
 
     // Limpa a cena (útil para recarregar dados)
     void limparCena();

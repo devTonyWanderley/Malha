@@ -1,10 +1,14 @@
+#	--Malha--
+
 cmake_minimum_required(VERSION 3.16)
 project(Malha LANGUAGES CXX)
 
 # Configurações Globais C++20
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi2")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)  # Necessário para Q_OBJECT
+set(CMAKE_AUTOUIC ON)  # Necessário para arquivos .ui
+set(CMAKE_AUTORCC ON)  # Necessário para recursos .qrc
 
 # Encontrar o Qt
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)

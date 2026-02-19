@@ -76,7 +76,7 @@ void painelCad::limparCena() {
     // Removidas as linhas da cruz verde que estavam aqui
 }
 
-void painelCad::desenharPontos(const std::vector<Geo::Ponto>& pontos) {
+void painelCad::desenharPontos(const std::vector<whlg::WPonto>& pontos) {
     if (pontos.empty()) return;
 
     limparCena(); // Garante tela limpa antes de novos dados
@@ -86,7 +86,7 @@ void painelCad::desenharPontos(const std::vector<Geo::Ponto>& pontos) {
     QPen penLinha(Qt::cyan, 0); // Cor das conexões
 
     double tamanhoPonto = 50.0;
-    const Geo::Ponto* anterior = nullptr;
+    const whlg::WPonto* anterior = nullptr;
 
     for (const auto& p : pontos) {
         // 1. Desenha o ponto

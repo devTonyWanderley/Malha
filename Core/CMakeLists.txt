@@ -1,11 +1,10 @@
+#	--Core--
+
 project(Core LANGUAGES CXX)
 
 # Criar a biblioteca Core
 # SHARED cria um .dll/.so, STATIC cria um .lib/.a
-add_library(Core SHARED 
-    geometria.h 
-    geometria.cpp
-    massadados.h
+add_library(Core SHARED
     geohl.h
 )
 
