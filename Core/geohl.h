@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cctype>
 #include <bit>
+#include <array>
+#include <cmath>
+#include <unordered_map>
 #include "../IO/arquivo.h"
 
 namespace whlg   //  quadtree HighLander
@@ -20,22 +23,42 @@ struct WAmostra
         nome = std::move(id);
         atr.erase(std::remove_if(atr.begin(), atr.end(), ::isspace), atr.end());
         atri = std::move(atr);
-    }
+    }   //  --Construtor WAmostra--
+
 };  //  --struct WAmostra--
 
 struct alignas(32) WPonto
 {
     uint32_t xl, yl, z;
     size_t aref; // Referência ao índice original em 'amostras', ou em outra estrutura (pavimento, projeto, camada, etc)
-    WPonto() : xl(0), yl(0), z(0), aref(0) {}
+    // FLAGS:
+    // bit 0: Função (0 = Nenhuma/Borda, 1 = Interno)
+    // bit 1: Estado (0 = Borda/Não-Validado, 1 = Validado)
+    // Seguindo sua tabela:
+    // 00 (0): Nenhuma
+    // 01 (1): Ponto de Borda
+    // 10 (2): Interno Não Validado
+    // 11 (3): Interno Validado
+    uint8_t flags;
+    WPonto() : xl(0), yl(0), z(0), aref(0), flags(0) {}
     WPonto(uint32_t x_real, uint32_t y_real, uint32_t z_real, size_t indice, uint32_t x0, uint32_t y0)
-        : xl(x_real - x0), yl(y_real - y0), z(z_real), aref(indice)
+        : xl(x_real - x0), yl(y_real - y0), z(z_real), aref(indice), flags(0)
     {}
     uint64_t distSq(uint32_t cx, uint32_t cy) const
     {
         int64_t dx = static_cast<int64_t>(xl) - cx;
         int64_t dy = static_cast<int64_t>(yl) - cy;
         return static_cast<uint64_t>(dx * dx + dy * dy);
+    }
+
+    // Helpers para facilitar a leitura sem perder performance
+    inline bool eInterno() const { return flags & 0b10; }
+    inline bool isValidado() const { return (flags & 0b11) == 0b11; }
+    inline bool eBorda() const { return flags == 0b01; }
+
+    void setEstado(uint8_t f1, uint8_t f0)
+    {
+        flags = (f1 << 1) | f0;
     }
 };  //  --struct alignas(32) WPonto--
 
@@ -72,6 +95,42 @@ struct WFace
         f[0] = f[1] = f[2] = static_cast<size_t>(-1);
     }
 };  //  --struct WFace--
+
+struct WEdge
+{
+    std::array<size_t, 2> v;    //  v[0] = Origem, v[1] = Destino. A orientação é CCW: a face interna está sempre à esquerda do vetor v0->v1.
+
+    // IDs das faces (triângulos) conectadas.
+    size_t faceEsq;     //  O triângulo que criou esta aresta (sempre preenchido).
+    size_t faceDir;     //  Inicialmente -1. Torna-se o ID do triângulo vizinho quando a aresta vira interna.
+    uint64_t distSq;    // Usado na Fila de Prioridade para processar arestas curtas primeiro (estabilidade).
+    uint8_t flags;      // Flags de Estado (compactadas para performance):
+    // bit 0: Ativa (1 = está na fronteira, 0 = processada)
+    // bit 1: Borda Final (1 = limite de 20m atingido, sem vizinho à direita)
+    static constexpr size_t NO_FACE = static_cast<size_t>(-1);  // Valor constante para representar "sem face" (equivalente a -1 em size_t)
+
+    WEdge(size_t v0, size_t v1, size_t idFace, uint64_t d2): v{v0, v1}, faceEsq(idFace), faceDir(NO_FACE), distSq(d2), flags(1)
+    {}
+    inline bool isFronteira() const { return (flags & 1) && (faceDir == NO_FACE); }
+    inline bool isMorta() const { return (flags & 2) != 0; }
+
+    void marcarComoBordaFinal()
+    {
+        flags &= ~1; // Remove flag ativa
+        flags |= 2;  // Marca como borda final do terreno
+    }
+
+    void tornarInterna(size_t idNovaFace)
+    {
+        faceDir = idNovaFace;
+        flags &= ~1; // Sai da lista de fronteira
+    }
+
+    std::pair<size_t, size_t> getChaveUnica() const // Retorna sempre {menor_indice, maior_indice}
+    {
+        return (v[0] < v[1]) ? std::make_pair(v[0], v[1]) : std::make_pair(v[1], v[0]);
+    }
+};  //  --struct WEdge--
 
 }   //  --namespace whlg--
 
@@ -194,4 +253,74 @@ public:
         }
     }   //  --void importa(const std::string& arquivo)--
 };  //  --class WMassa--
+
+class WMdt
+{
+public:
+    // Referências aos dados originais da WMassa
+    const std::vector<whlg::WNo>& nos;
+
+    // Resultados da Malha
+    std::vector<whlg::WFace> faces;
+    std::vector<whlg::WEdge> todasArestas;
+
+    // Controle de Fronteira
+    // Usamos um Comparator para garantir que a menor aresta (distSq) seja processada primeiro
+    struct EdgeComparator {
+        bool operator()(size_t a_idx, size_t b_idx, const std::vector<whlg::WEdge>& arestas) const {
+            return arestas[a_idx].distSq > arestas[b_idx].distSq;
+        }
+    };
+
+    // Lista de arestas ativas (IDs para 'todasArestas')
+    std::vector<size_t> fronteiraAtiva;
+
+    // Mapa de "Zíper": Vértice -> ID da Aresta na Fronteira
+    // Essencial para o Cenário B (fechar triângulos sem criar pontos novos)
+    std::unordered_map<size_t, size_t> mapaVertices;
+
+    WMdt(const WMassa& massa) : nos(massa.quadro) {}
+
+    void gerarMalha(uint64_t limiteDistSq = 40000000000ULL) { // 200.000^2
+        // 1. Encontrar Semente (Ponto mais central da Quadtree + Vizinho mais próximo)
+        // 2. Criar primeiro triângulo e adicionar 3 WEdge em 'todasArestas' e 'fronteiraAtiva'
+
+        while (!fronteiraAtiva.empty()) {
+            // 3. Ordenar para pegar a menor aresta (ou usar std::priority_queue)
+            size_t idAresta = extrairMenorAresta();
+            whlg::WEdge& edge = todasArestas[idAresta];
+
+            if (edge.isMorta()) continue;
+
+            // 4. Buscar melhor ponto 'p' à esquerda de edge.v[0]->edge.v[1]
+            size_t p_idx = buscarMelhorPontoDelaunay(edge, limiteDistSq);
+
+            if (p_idx == whlg::WEdge::NO_FACE) {
+                edge.marcarComoBordaFinal();
+                continue;
+            }
+
+            // 5. O Ponto 'p' já está na fronteira? (Cenário B - Zíper)
+            if (mapaVértices.count(p_idx)) {
+                fecharZiper(idAresta, p_idx);
+            } else {
+                expandirFronteira(idAresta, p_idx);
+            }
+        }
+    }
+
+private:
+    void expandirFronteira(size_t idEdgeBase, size_t p_idx) {
+        // Cria nova Face
+        // Cria duas novas WEdge (v1->p e p->v0)
+        // Atualiza flags e mapas
+    }
+
+    size_t buscarMelhorPontoDelaunay(const whlg::WEdge& e, uint64_t maxD2) {
+        // Implementa a busca na Quadtree usando o critério de maior ângulo
+        // e respeitando o limite de 20m (maxD2)
+        return whlg::WEdge::NO_FACE;
+    }
+};  //  --class WMdt--
+
 }   //  --namespace whlio--
