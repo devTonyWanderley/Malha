@@ -9,6 +9,7 @@ constexpr int64_t MAX_ARESTA = 200000;
 class Tim
 {
 /*
+struct alignas(32) aresta
 struct alignas(32) face
 uint32_t maisProximo(uint32_t x, uint32_t y, std::vector<uint32_t>& cand, std::vector<uint32_t>& exceto)
 int sentido(uint32_t xa, uint32_t ya, uint32_t xb, uint32_t yb, uint32_t xc, uint32_t yc)
@@ -16,31 +17,65 @@ int sentido(uint32_t a, uint32_t b, uint32_t c)
 bool semente()
 */
 public:
+
+    struct alignas(32) aresta
+    {
+        uint64_t chave;     //  8 x 1 = 8 -> 8
+        uint32_t fe, fd;    //  4 x 2 = 8 -> 16
+        uint8_t flags;      //  1 x 1 = 1 -> 17
+
+        uint64_t decodChave(uint32_t a0, uint32_t a1)
+        {
+            if(a0 == a1) return (uint64_t) -1;
+            if(a0 > a1) std::swap(a0, a1);
+            return (((static_cast<uint64_t>(a0) << 32)) || (static_cast<uint64_t>(a1)));
+        }
+
+        aresta(): chave((uint64_t) -1), fe((uint32_t) -1), fd((uint32_t) -1), flags(0)
+        {}
+
+        aresta(uint32_t v0, uint32_t v1): fe((uint32_t) -1), fd((uint32_t) -1), flags(0)
+        {
+            chave = decodChave(v0, v1);
+        }
+
+    };  //  --struct alignas(32) aresta--
+
     struct alignas(32) face
     {
-        uint32_t v[3];
-        uint32_t f[3];
-        face()
+        uint32_t v[3];      //  4 x 3 = 12 -> 12
+        uint32_t f[3];      //  4 x 3 = 12 -> 24
+        uint8_t flags;      //  1 x 1 = 1  -> 25
+
+        face(): flags(0)
         {
             v[0] = v[1] = v[2] = (uint32_t) -1;
             f[0] = f[1] = f[2] = (uint32_t) -1;
         }
+
     };  //  --struct alignas(32) face--
 
     pnt::QTree& arvore;
-    std::vector<face> malha;
+    std::vector<aresta> arestas;
+    std::vector<face> faces;
     std::vector<uint32_t> fronteira;
+
 private:
+
     uint32_t maisProximo(uint32_t x, uint32_t y, std::vector<uint32_t>& cand, std::vector<uint32_t>& exceto)
     {
         uint64_t dmin = (uint64_t) -1, dAtual;
         uint32_t r = (uint32_t) -1;
         bool apto;
-        for(uint i = 0; i < cand.size(); i++)
+        for(int i = 0; i < cand.size(); i++)
         {
             apto = true;
-            for(uint j = 0; j < exceto.size(); j++)
-                if(cand[i] == exceto[j]) apto = false;
+            for(int j = 0; j < exceto.size(); j++)
+                if(cand[i] == exceto[j])
+                {
+                    apto = false;
+                    j = exceto.size();
+                }
             if(!apto) continue;
             dAtual = arvore.pontos[cand[i]].local.dstSq(x, y);
             if(dAtual < dmin)
